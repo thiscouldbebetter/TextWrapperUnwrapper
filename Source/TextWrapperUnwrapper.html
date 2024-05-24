@@ -1,0 +1,253 @@
+<html>
+<body>
+
+<div id="divUi">
+
+	<h3>Text Document Wrapper/Unwrapper</h3>
+
+	<p>
+		Load or paste some text,
+		then click the Wrap To Line Length button
+		to "wrap" the text by inserting hard newlines in lines longer
+		than the specified width in characters,
+		or click the Remove Lone Newlines button
+		to "unwrap" the text, by remove newlines within blocks of text
+		that are delimited by one or more blank lines.
+	</p>
+
+	<div>
+		<label>Text to Wrap or Unwrap:</label>
+		<label>Load from File:</label>
+		<input id="inputFile" type="file" onchange="inputFile_Changed(this);"></input>
+		<button onclick="buttonTextToWrapOrUnwrapClear_Clicked()">Clear</button>
+		<br />
+
+		<textarea
+			id="textareaTextToWrapOrUnwrap"
+			cols="80" rows="16"
+			wrap="off"
+		></textarea>
+	</div>
+
+	<div>
+		<button onclick="buttonWrapToLineLength_Clicked()">
+			Wrap to Line Length in Chars:
+		</button>
+		<input
+			id="inputLineLengthToWrapToInChars"
+			type="number"
+			value="60"
+			step="1"
+			min="1"
+		></input>
+		<label>Do Not Wrap within Word:</label>
+		<input id="checkboxDoNotWrapWithinWord" type="checkbox" checked="true"></input>
+	</div>
+
+	<div>
+		<button onclick="buttonUnwrap_Clicked()">Unwrap by Removing Lone Newlines</button>
+	</div>
+
+	<div>
+		<label>Text After Wrapping or Unwrapping:</label>
+		<br />
+		<textarea
+			id="textareaTextAfterWrappingOrUnwrapping"
+			cols="80"
+			rows="16"
+			wrap="off"
+		></textarea>
+	</div>
+
+</div>
+
+<script type="text/javascript">
+
+// UI event handlers.
+
+function buttonTextToWrapOrUnwrapClear_Clicked()
+{
+	var d = document;
+
+	var textareaTextToWrapOrUnwrap =
+		d.getElementById("textareaTextToWrapOrUnwrap");
+	textareaTextToWrapOrUnwrap.value = "";
+}
+
+function buttonUnwrap_Clicked()
+{
+	var d = document;
+
+	var textareaTextToWrapOrUnwrap =
+		d.getElementById("textareaTextToWrapOrUnwrap");
+	var textToUnwrap = textareaTextToWrapOrUnwrap.value;
+
+	var textWrapperUnwrapper = new TextWrapperUnwrapper();
+	var textUnwrapped = textWrapperUnwrapper.unwrapText(textToUnwrap);
+
+	var textareaTextAfterWrappingOrUnwrapping =
+		d.getElementById("textareaTextAfterWrappingOrUnwrapping");
+	textareaTextAfterWrappingOrUnwrapping.value = textUnwrapped;
+}
+
+function buttonWrapToLineLength_Clicked()
+{
+	var d = document;
+
+	var textareaTextToWrapOrUnwrap =
+		d.getElementById("textareaTextToWrapOrUnwrap");
+	var textToWrap = textareaTextToWrapOrUnwrap.value;
+
+	var inputLineLengthToWrapToInChars =
+		d.getElementById("inputLineLengthToWrapToInChars");
+	var lineLengthToWrapToInChars =
+		parseInt(inputLineLengthToWrapToInChars.value);
+
+	var checkboxDoNotWrapWithinWord =
+		d.getElementById("checkboxDoNotWrapWithinWord");
+	var doNotWrapWithinWord =
+		checkboxDoNotWrapWithinWord.value;
+
+	var textWrapperUnwrapper = new TextWrapperUnwrapper();
+	var textWrapped =
+		textWrapperUnwrapper.wrapTextToLineLengthInChars
+		(
+			textToWrap, lineLengthToWrapToInChars, doNotWrapWithinWord
+		);
+
+	var textareaTextAfterWrappingOrUnwrapping =
+		d.getElementById("textareaTextAfterWrappingOrUnwrapping");
+	textareaTextAfterWrappingOrUnwrapping.value = textWrapped;
+}
+
+function inputFile_Changed(inputFile)
+{
+	var fileToLoad = inputFile.files[0];
+
+	if (fileToLoad != null)
+	{
+		var fileReader = new FileReader();
+		fileReader.onload = (event) =>
+		{
+			var fileText = event.target.result;
+			var d = document;
+
+			var textareaTextToWrapOrUnwrap =
+				d.getElementById("textareaTextToWrapOrUnwrap");
+			textareaTextToWrapOrUnwrap.value = fileText;
+		};
+		fileReader.readAsText(fileToLoad);
+	}
+}
+
+
+// Classes.
+
+class TextWrapperUnwrapper
+{
+	unwrapText(textToUnwrap)
+	{
+		var newline = "\n";
+		var textToUnwrapAsLines = textToUnwrap.split(newline);
+
+		var linesAfterUnwrapping = [];
+		var linesInCurrentBlockSoFar = [];
+
+		for (var i = 0; i < textToUnwrapAsLines.length; i++)
+		{
+			var line = textToUnwrapAsLines[i];
+			var lineTrimmed = line.trimEnd();
+
+			var lineIsBlank = (lineTrimmed.length == 0);
+
+			if (lineIsBlank)
+			{
+				if (linesInCurrentBlockSoFar.length > 0)
+				{
+					var currentBlockAsSingleLine =
+						linesInCurrentBlockSoFar.join(" ");
+					linesAfterUnwrapping.push(currentBlockAsSingleLine);
+					linesInCurrentBlockSoFar.length = 0;
+				}
+
+				linesAfterUnwrapping.push(line);
+			}
+			else
+			{
+				linesInCurrentBlockSoFar.push(lineTrimmed);
+			}
+		}
+
+		var currentBlockAsSingleLine =
+			linesInCurrentBlockSoFar.join(" ");
+		linesAfterUnwrapping.push(currentBlockAsSingleLine);
+		linesInCurrentBlockSoFar.length = 0;
+
+		var textUnwrapped = linesAfterUnwrapping.join(newline);
+
+		return textUnwrapped;
+	}
+
+	wrapTextToLineLengthInChars
+	(
+		textToWrap,
+		lineLengthToWrapToInChars,
+		doNotWrapWithinWord
+	)
+	{
+		var newline = "\n";
+		var linesToWrap = textToWrap.split(newline);
+
+		var linesAfterWrapping = [];
+
+		for (var i = 0; i < linesToWrap.length; i++)
+		{
+			var lineToWrap = linesToWrap[i];
+
+			while (lineToWrap.length > lineLengthToWrapToInChars)
+			{
+				var charsToWrapThisLineTo;
+
+				if (doNotWrapWithinWord)
+				{
+					var lastIndexOfSpaceWithinLineAfterWrapping =
+						lineToWrap.substr(0, lineLengthToWrapToInChars).lastIndexOf(" ");
+
+					if (lastIndexOfSpaceWithinLineAfterWrapping >= 0)
+					{
+						charsToWrapThisLineTo = lastIndexOfSpaceWithinLineAfterWrapping;
+					}
+					else
+					{
+						charsToWrapThisLineTo = lineLengthToWrapToInChars;
+					}
+				}
+				else
+				{
+					charsToWrapThisLineTo = lineLengthToWrapToInChars;
+				}
+
+				var lineAfterWrapping =
+					lineToWrap.substr(0, charsToWrapThisLineTo);
+
+				lineToWrap = lineToWrap.substr(charsToWrapThisLineTo);
+				if (lineToWrap.startsWith(" "))
+				{
+					lineToWrap = lineToWrap.substr(1);
+				}
+
+				linesAfterWrapping.push(lineAfterWrapping);
+			}
+
+			linesAfterWrapping.push(lineToWrap);
+		}
+
+		var textWrapped = linesAfterWrapping.join(newline);
+
+		return textWrapped;
+	}
+}
+
+</script>
+</body>
+</html>
